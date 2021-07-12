@@ -1,0 +1,1079 @@
+---
+title: "DGE and pathway analysis"
+output: html_notebook
+editor_options: 
+  chunk_output_type: console
+---
+
+Install packages:
+```{r}
+# BiocManager::install('DESeq2')
+library(DESeq2)
+library(readxl)
+setwd('~/Downloads/BEA20P034_FC/DESeq/')
+```
+
+Load data:
+```{r}
+countData <- as.matrix(read.csv('degData_no_104cm.csv', sep = ';', row.names = 'gene_id'))
+head(countData)
+
+metaData <- read.csv('coldata_no_104cm.csv', sep = ';', row.names = 1)
+head(metaData)
+metaData <- metaData[,c("cellType","condition")]
+metaData$condition <- factor(metaData$condition)
+metaData$cellType <- factor(metaData$cellType)
+metaData
+```
+
+```{r}
+colnames(countData) <- sub("X", "", colnames(countData))
+all(rownames(metaData) == colnames(countData))
+```
+
+
+Construct DESEQDataSet Object
+```{r}
+dds <- DESeqDataSetFromMatrix(countData = countData, 
+                              colData = metaData, 
+                              design =  ~ cellType + cellType:condition)
+
+dds$group <- factor(paste0(dds$cellType, dds$condition))
+design(dds) <- ~ group
+
+dds <- DESeq(dds)
+resultsNames(dds)
+
+```
+
+Results
+```{r}
+# for conditions and cell type NTC vs cell type CMTC
+CM_v_N_C<- results(dds, contrast=c("group","CMTCControl", "NTCControl"), tidy = T)
+CM_v_N_EA<- results(dds, contrast= c("group","CMTCEarly.Treated", "NTCEarly.Treated"), tidy = T)
+CM_v_N_LA<- results(dds, contrast= c("group","CMTCLate.Treated", "NTCLate.Treated"), tidy = T)
+
+            
+
+# for cell type NTC Control vs Late treated
+N_LA_v_C <- results(dds, contrast=c("group", "NTCLate.Treated", "NTCControl"), tidy = T)
+N_EA_v_C<- results(dds, contrast=c("group", "NTCEarly.Treated", "NTCControl"), tidy = T)
+CM_EA_v_C <- results(dds, contrast=c("group", "CMTCEarly.Treated", "CMTCControl"), tidy = T)
+CM_LA_v_C <- results(dds, contrast=c("group", "CMTCLate.Treated", "CMTCControl"), tidy = T)
+N_EA_v_LA <- results(dds, contrast=c("group","NTCEarly.Treated","NTCLate.Treated"), tidy = T)
+CM_EA_v_LA <- results(dds, contrast=c("group","CMTCEarly.Treated","CMTCLate.Treated"), tidy = T)
+
+```
+
+
+Volcano plot control
+```{r}
+library(tidyverse)
+# BiocManager::install('EnhancedVolcano')
+# BiocManager::install("org.Hs.eg.db")
+library(EnhancedVolcano)
+library("org.Hs.eg.db")
+ens2symbol <- AnnotationDbi::select(org.Hs.eg.db,
+                                    key=CM_v_N_C$row, 
+                                    columns="SYMBOL",
+                                    keytype="ENSEMBL")
+# For UNIPROT anno
+ens2uniprot <- AnnotationDbi::select(org.Hs.eg.db,
+                                    key=CM_v_N_C$row,
+                                    columns="UNIPROT",
+                                    keytype="ENSEMBL")
+
+# For ENTREZ anno
+ens2entrez <- AnnotationDbi::select(org.Hs.eg.db,
+                                    key=CM_v_N_C$row,
+                                    columns="ENTREZID",
+                                    keytype="ENSEMBL")
+
+ens2symbol <- as_tibble(ens2symbol)
+ens2uniprot <- as_tibble(ens2uniprot)
+ens2entrez <- as_tibble(ens2entrez)
+
+
+CM_v_N_C <- inner_join(CM_v_N_C, ens2symbol, by=c("row"="ENSEMBL"))
+CM_v_N_C <- N_v_CM_C %>% na.omit()
+CM_v_N_C <- CM_v_N_C[!duplicated(CM_v_N_C$SYMBOL), ]
+
+# selecting only protein coding genes by using uniprot annotation
+CM_v_N_C_uniprot <- inner_join(CM_v_N_C, ens2uniprot, by=c("row"="ENSEMBL"))
+CM_v_N_C_uniprot <- CM_v_N_uniprot %>% na.omit()
+CM_v_N_C_uniprot <- CM_v_N_C_uniprot[!duplicated(N_v_CM_C_uniprot$SYMBOL), ]
+
+# ENTREZ
+CM_v_N_C_entrez <- inner_join(CM_v_N_C, ens2entrez, by=c("row"="ENSEMBL"))
+CM_v_N_C_entrez <- CM_v_N_C_entrez %>% na.omit()
+CM_v_N_C_entrez <- CM_v_N_C_entrez[!duplicated(CM_v_N_C_entrez$SYMBOL), ]
+
+# 
+# EnhancedVolcano(N_v_CM_C,
+#                 lab = N_v_CM_C$SYMBOL, 
+#                 x = 'log2FoldChange', 
+#                 y = 'pvalue', 
+#                 title = 'Naive vs. Central Memory T cells (control)',
+#                 xlim = c(-8, 8)
+#   )
+```
+
+Volcano plot EA
+```{r}
+ens2symbol <- AnnotationDbi::select(org.Hs.eg.db,
+                                    key=CM_v_N_EA$row, 
+                                    columns="SYMBOL",
+                                    keytype="ENSEMBL")
+# For UNIPROT anno
+ens2uniprot <- AnnotationDbi::select(org.Hs.eg.db,
+                                    key=CM_v_N_EA$row,
+                                    columns="UNIPROT",
+                                    keytype="ENSEMBL")
+
+# For ENTREZ anno
+ens2entrez <- AnnotationDbi::select(org.Hs.eg.db,
+                                    key=CM_v_N_EA$row,
+                                    columns="ENTREZID",
+                                    keytype="ENSEMBL")
+
+ens2symbol <- as_tibble(ens2symbol)
+ens2uniprot <- as_tibble(ens2uniprot)
+ens2entrez <- as_tibble(ens2entrez)
+
+
+CM_v_N_EA <- inner_join(CM_v_N_EA, ens2symbol, by=c("row"="ENSEMBL"))
+CM_v_N_EA <- CM_v_N_EA %>% na.omit()
+CM_v_N_EA <- CM_v_N_EA[!duplicated(CM_v_N_EA$SYMBOL), ]
+
+# selecting only protein coding genes by using uniprot annotation
+CM_v_N_EA_uniprot <- inner_join(CM_v_N_EA, ens2uniprot, by=c("row"="ENSEMBL"))
+CM_v_N_EA_uniprot <- CM_v_N_EA_uniprot %>% na.omit()
+CM_v_N_EA_uniprot <- CM_v_N_EA_uniprot[!duplicated(CM_v_N_EA_uniprot$SYMBOL), ]
+
+# ENTREZ
+CM_v_N_EA_entrez <- inner_join(CM_v_N_EA, ens2entrez, by=c("row"="ENSEMBL"))
+CM_v_N_EA_entrez <- CM_v_N_EA_entrez %>% na.omit()
+CM_v_N_EA_entrez <- CM_v_N_EA_entrez[!duplicated(CM_v_N_EA_entrez$SYMBOL), ]
+
+# EnhancedVolcano(N_v_CM_EA,
+#                 lab = N_v_CM_EA$SYMBOL, 
+#                 x = 'log2FoldChange', 
+#                 y = 'pvalue', 
+#                 title = 'Naive vs. Central Memory T cells (EA)',
+#                 xlim = c(-8, 8)
+#   )
+```
+Volcano plot LA
+```{r fig_width: 6, fig_height: 8 }
+ens2symbol <- AnnotationDbi::select(org.Hs.eg.db,
+                                    key=CM_v_N_LA$row, 
+                                    columns="SYMBOL",
+                                    keytype="ENSEMBL")
+# For UNIPROT anno
+ens2uniprot <- AnnotationDbi::select(org.Hs.eg.db,
+                                    key=CM_v_N_LA$row,
+                                    columns="UNIPROT",
+                                    keytype="ENSEMBL")
+
+# For ENTREZ anno
+ens2entrez <- AnnotationDbi::select(org.Hs.eg.db,
+                                    key=CM_v_N_LA$row,
+                                    columns="ENTREZID",
+                                    keytype="ENSEMBL")
+
+ens2symbol <- as_tibble(ens2symbol)
+ens2uniprot <- as_tibble(ens2uniprot)
+ens2entrez <- as_tibble(ens2entrez)
+
+
+CM_v_N_LA <- inner_join(CM_v_N_LA, ens2symbol, by=c("row"="ENSEMBL"))
+CM_v_N_LA <- CM_v_N_LA %>% na.omit()
+CM_v_N_LA <- CM_v_N_LA[!duplicated(CM_v_N_LA$SYMBOL), ]
+
+# selecting only protein coding genes by using uniprot annotation
+CM_v_N_LA_uniprot <- inner_join(CM_v_N_LA, ens2uniprot, by=c("row"="ENSEMBL"))
+CM_v_N_LA_uniprot <- CM_v_N_LA_uniprot %>% na.omit()
+CM_v_N_LA_uniprot <- CM_v_N_LA_uniprot[!duplicated(CM_v_N_LA_uniprot$SYMBOL), ]
+
+# ENTREZ
+CM_v_N_LA_entrez <- inner_join(CM_v_N_LA, ens2entrez, by=c("row"="ENSEMBL"))
+CM_v_N_LA_entrez <- CM_v_N_LA_entrez %>% na.omit()
+CM_v_N_LA_entrez <- CM_v_N_LA_entrez[!duplicated(CM_v_N_LA_entrez$SYMBOL), ]
+
+# EnhancedVolcano(N_v_CM_LA,
+#                 lab = N_v_CM_LA$SYMBOL, 
+#                 x = 'log2FoldChange', 
+#                 y = 'pvalue', 
+#                 title = 'Naive vs. Central Memory T cells (LA)',
+#                 xlim = c(-8, 8)
+#   )
+```
+
+Naive LA vs control
+```{r}
+ens2symbol <- AnnotationDbi::select(org.Hs.eg.db,
+                                    key=N_LA_v_C$row, 
+                                    columns="SYMBOL",
+                                    keytype="ENSEMBL")
+# For UNIPROT anno
+ens2uniprot <- AnnotationDbi::select(org.Hs.eg.db,
+                                    key=N_LA_v_C$row,
+                                    columns="UNIPROT",
+                                    keytype="ENSEMBL")
+
+# For ENTREZ anno
+ens2entrez <- AnnotationDbi::select(org.Hs.eg.db,
+                                    key=N_LA_v_C$row,
+                                    columns="ENTREZID",
+                                    keytype="ENSEMBL")
+
+ens2symbol <- as_tibble(ens2symbol)
+ens2uniprot <- as_tibble(ens2uniprot)
+ens2entrez <- as_tibble(ens2entrez)
+
+
+N_LA_v_C <- inner_join(N_LA_v_C, ens2symbol, by=c("row"="ENSEMBL"))
+N_LA_v_C <- N_LA_v_C %>% na.omit()
+N_LA_v_C <- N_LA_v_C[!duplicated(N_LA_v_C$SYMBOL), ]
+
+# selecting only protein coding genes by using uniprot annotation
+N_LA_v_C_uniprot <- inner_join(N_LA_v_C, ens2uniprot, by=c("row"="ENSEMBL"))
+N_LA_v_C_uniprot <- N_LA_v_C_uniprot %>% na.omit()
+N_LA_v_C_uniprot <- N_LA_v_C_uniprot[!duplicated(N_LA_v_C_uniprot$SYMBOL), ]
+
+# ENTREZ
+N_LA_v_C_entrez <- inner_join(N_LA_v_C, ens2entrez, by=c("row"="ENSEMBL"))
+N_LA_v_C_entrez <- N_LA_v_C_entrez %>% na.omit()
+N_LA_v_C_entrez <- N_LA_v_C_entrez[!duplicated(N_LA_v_C_entrez$SYMBOL), ]
+
+vol_lavc <- EnhancedVolcano(N_LA_v_C_uniprot,
+                lab = NA, 
+                x = 'log2FoldChange', 
+                y = 'padj', 
+                pCutoff = 0.01, #pCutoff = 0.005,
+                FCcutoff = 1.5, #FCcutoff = 1
+                col = c('grey', 'pink','#00509d', '#bf0603'),
+                title = 'LA vs. Control',
+                subtitle = '',
+                caption = '',
+                xlim = c(-5, 5),
+                ylim = c(0, 10),
+                pointSize = 1,
+                gridlines.major = F,
+                gridlines.minor = F,
+                legendPosition = 'none',
+                legendLabSize = 10
+  )
+# stats
+N_LA_v_C_uniprot %>% 
+  summarise(
+    dn_red = sum(log2FoldChange < -1.5 & padj <= 0.01),
+    dn_pink = sum(log2FoldChange < -1.5 & padj >= 0.01),
+    dn_blue = sum(log2FoldChange>-1.5 & log2FoldChange<0 & padj <= 0.01),
+    dn_grey = sum(log2FoldChange>-1.5 & log2FoldChange<0 & padj >= 0.01),
+    up_red = sum(log2FoldChange > 1.5 & padj <= 0.01),
+    up_pink = sum(log2FoldChange > 1.5 & padj >= 0.01),
+    up_blue = sum(log2FoldChange < 1.5 & log2FoldChange > 0 & padj <= 0.01),
+    up_grey = sum(log2FoldChange < 1.5 & log2FoldChange > 0 & padj >= 0.01)
+    
+  )
+```
+Naive EA vs control
+```{r}
+ens2symbol <- AnnotationDbi::select(org.Hs.eg.db,
+                                    key=N_EA_v_C$row, 
+                                    columns="SYMBOL",
+                                    keytype="ENSEMBL")
+# For UNIPROT anno
+ens2uniprot <- AnnotationDbi::select(org.Hs.eg.db,
+                                    key=N_EA_v_C$row,
+                                    columns="UNIPROT",
+                                    keytype="ENSEMBL")
+
+# For ENTREZ anno
+ens2entrez <- AnnotationDbi::select(org.Hs.eg.db,
+                                    key=N_EA_v_C$row,
+                                    columns="ENTREZID",
+                                    keytype="ENSEMBL")
+
+ens2symbol <- as_tibble(ens2symbol)
+ens2uniprot <- as_tibble(ens2uniprot)
+ens2entrez <- as_tibble(ens2entrez)
+
+N_EA_v_C <- inner_join(N_EA_v_C, ens2symbol, by=c("row"="ENSEMBL"))
+N_EA_v_C <- N_EA_v_C %>% na.omit()
+N_EA_v_C <- N_EA_v_C[!duplicated(N_EA_v_C$SYMBOL), ]
+
+# selecting only protein coding genes by using uniprot annotation
+N_EA_v_C_uniprot <- inner_join(N_EA_v_C, ens2uniprot, by=c("row"="ENSEMBL"))
+N_EA_v_C_uniprot <- N_EA_v_C_uniprot %>% na.omit()
+N_EA_v_C_uniprot <- N_EA_v_C_uniprot[!duplicated(N_EA_v_C_uniprot$SYMBOL), ]
+
+# ENTREZ
+N_EA_v_C_entrez <- inner_join(N_EA_v_C, ens2entrez, by=c("row"="ENSEMBL"))
+N_EA_v_C_entrez <- N_EA_v_C_entrez %>% na.omit()
+N_EA_v_C_entrez <- N_EA_v_C_entrez[!duplicated(N_EA_v_C_entrez$SYMBOL), ]
+
+
+vol_eavc <- EnhancedVolcano(N_EA_v_C_uniprot,
+                lab = NA, 
+                x = 'log2FoldChange', 
+                y = 'padj', 
+                pCutoff = 0.01, #pCutoff = 0.005,
+                FCcutoff = 1.5, #FCcutoff = 1
+                col = c('grey', 'pink','#00509d', '#bf0603'),
+                title = 'EA vs. Control',
+                subtitle = '',
+                caption = '',
+                xlim = c(-5, 5),
+                ylim = c(0, 10),
+                pointSize = 1,
+                gridlines.major = F,
+                gridlines.minor = F,
+                legendPosition = 'none',
+                legendLabSize = 10
+  )
+#stats
+N_EA_v_C_uniprot %>% 
+  summarise(
+    dn_red = count(log2FoldChange < -1.5, padj <= 0.01),
+    dn_pink = count(log2FoldChange < -1.5, padj >= 0.01),
+    dn_blue = count(log2FoldChange>-1.5 & log2FoldChange<0, padj <= 0.01),
+    dn_grey = count(log2FoldChange>-1.5 & log2FoldChange<0, padj >= 0.01),
+    up_red = count(log2FoldChange > 1.5, padj <= 0.01),
+    up_pink = count(log2FoldChange > 1.5, padj >= 0.01),
+    up_blue = count(log2FoldChange < 1.5 & log2FoldChange > 0, padj <= 0.01),
+    up_grey = count(log2FoldChange < 1.5 & log2FoldChange > 0, padj >= 0.01)
+  )
+```
+EA vs LA naive cells
+```{r}
+ens2symbol <- AnnotationDbi::select(org.Hs.eg.db,
+                                    key=N_EA_v_LA$row, 
+                                    columns="SYMBOL",
+                                    keytype="ENSEMBL")
+# For UNIPROT anno
+ens2uniprot <- AnnotationDbi::select(org.Hs.eg.db,
+                                    key=N_EA_v_LA$row,
+                                    columns="UNIPROT",
+                                    keytype="ENSEMBL")
+
+# For ENTREZ anno
+ens2entrez <- AnnotationDbi::select(org.Hs.eg.db,
+                                    key=N_EA_v_LA$row,
+                                    columns="ENTREZID",
+                                    keytype="ENSEMBL")
+
+ens2symbol <- as_tibble(ens2symbol)
+ens2uniprot <- as_tibble(ens2uniprot)
+ens2entrez <- as_tibble(ens2entrez)
+
+
+N_EA_v_LA <- inner_join(N_EA_v_LA, ens2symbol, by=c("row"="ENSEMBL"))
+N_EA_v_LA <- N_EA_v_LA %>% na.omit()
+N_EA_v_LA <- N_EA_v_LA[!duplicated(N_EA_v_LA$SYMBOL), ]
+
+# selecting only protein coding genes by using uniprot annotation
+N_EA_v_LA_uniprot <- inner_join(N_EA_v_LA, ens2uniprot, by=c("row"="ENSEMBL"))
+N_EA_v_LA_uniprot <- N_EA_v_LA_uniprot %>% na.omit()
+N_EA_v_LA_uniprot <- N_EA_v_LA_uniprot[!duplicated(N_EA_v_LA_uniprot$SYMBOL), ]
+
+# ENTREZ
+N_EA_v_LA_entrez <- inner_join(N_EA_v_LA, ens2entrez, by=c("row"="ENSEMBL"))
+N_EA_v_LA_entrez <- N_EA_v_LA_entrez %>% na.omit()
+N_EA_v_LA_entrez <- N_EA_v_LA_entrez[!duplicated(N_EA_v_LA_entrez$SYMBOL), ]
+
+vol_eavla <- EnhancedVolcano(N_EA_v_LA_uniprot,
+                lab = NA, 
+                x = 'log2FoldChange', 
+                y = 'padj', 
+                col = c('grey', 'pink','#00509d', '#bf0603'),
+                pCutoff = 0.01, #pCutoff = 0.005,
+                FCcutoff = 1.5, #FCcutoff = 1
+                title = 'EA vs. LA',
+                subtitle = '',
+                caption = '',
+                xlim = c(-5, 5),
+                ylim = c(0, 10),
+                pointSize = 1,
+                gridlines.major = F,
+                gridlines.minor = F,
+                legendPosition = 'none',
+                legendLabSize = 10
+  )
+# stats
+N_EA_v_LA_uniprot %>% 
+  summarise(
+    dn_red = count(log2FoldChange < -1.5, padj <= 0.01),
+    dn_pink = count(log2FoldChange < -1.5, padj >= 0.01),
+    dn_blue = count(log2FoldChange>-1.5 & log2FoldChange<0, padj <= 0.01),
+    dn_grey = count(log2FoldChange>-1.5 & log2FoldChange<0, padj >= 0.01),
+    up_red = count(log2FoldChange > 1.5, padj <= 0.01),
+    up_pink = count(log2FoldChange > 1.5, padj >= 0.01),
+    up_blue = count(log2FoldChange < 1.5 & log2FoldChange > 0, padj <= 0.01),
+    up_grey = count(log2FoldChange < 1.5 & log2FoldChange > 0, padj >= 0.01)    
+  )
+```
+Figure with all volcano plots for naive cells
+```{r}
+library(cowplot)
+plot_grid(vol_eavc, vol_lavc, vol_eavla,
+          nrow = 1)
+```
+
+
+
+Central memory EA vs control
+```{r}
+ens2symbol <- AnnotationDbi::select(org.Hs.eg.db,
+                                    key=CM_EA_v_C$row, 
+                                    columns="SYMBOL",
+                                    keytype="ENSEMBL")
+# For UNIPROT anno
+ens2uniprot <- AnnotationDbi::select(org.Hs.eg.db,
+                                    key=CM_EA_v_C$row,
+                                    columns="UNIPROT",
+                                    keytype="ENSEMBL")
+
+# For ENTREZ anno
+ens2entrez <- AnnotationDbi::select(org.Hs.eg.db,
+                                    key=CM_EA_v_C$row,
+                                    columns="ENTREZID",
+                                    keytype="ENSEMBL")
+
+ens2symbol <- as_tibble(ens2symbol)
+ens2uniprot <- as_tibble(ens2uniprot)
+ens2entrez <- as_tibble(ens2entrez)
+
+
+CM_EA_v_C <- inner_join(CM_EA_v_C, ens2symbol, by=c("row"="ENSEMBL"))
+CM_EA_v_C <- CM_EA_v_C %>% na.omit()
+CM_EA_v_C <- CM_EA_v_C[!duplicated(CM_EA_v_C$SYMBOL), ]
+
+# selecting only protein coding genes by using uniprot annotation
+CM_EA_v_C_uniprot <- inner_join(CM_EA_v_C, ens2uniprot, by=c("row"="ENSEMBL"))
+CM_EA_v_C_uniprot <- CM_EA_v_C_uniprot %>% na.omit()
+CM_EA_v_C_uniprot <- CM_EA_v_C_uniprot[!duplicated(CM_EA_v_C_uniprot$SYMBOL), ]
+
+# ENTREZ
+CM_EA_v_C_entrez <- inner_join(CM_EA_v_C, ens2entrez, by=c("row"="ENSEMBL"))
+CM_EA_v_C_entrez <- CM_EA_v_C_entrez %>% na.omit()
+CM_EA_v_C_entrez <- CM_EA_v_C_entrez[!duplicated(CM_EA_v_C_entrez$SYMBOL), ]
+# 
+# EnhancedVolcano(CM_EA_v_C,
+#                 lab = CM_EA_v_C$SYMBOL, 
+#                 x = 'log2FoldChange', 
+#                 y = 'pvalue', 
+#                 title = 'EA vs. Control (central memory)',
+#                 xlim = c(-8, 8)
+#   )
+```
+Central memory LA vs control
+```{r}
+ens2symbol <- AnnotationDbi::select(org.Hs.eg.db,
+                                    key=CM_LA_v_C$row, 
+                                    columns="SYMBOL",
+                                    keytype="ENSEMBL")
+# For UNIPROT anno
+ens2uniprot <- AnnotationDbi::select(org.Hs.eg.db,
+                                    key=CM_LA_v_C$row,
+                                    columns="UNIPROT",
+                                    keytype="ENSEMBL")
+
+# For ENTREZ anno
+ens2entrez <- AnnotationDbi::select(org.Hs.eg.db,
+                                    key=CM_LA_v_C$row,
+                                    columns="ENTREZID",
+                                    keytype="ENSEMBL")
+
+ens2symbol <- as_tibble(ens2symbol)
+ens2uniprot <- as_tibble(ens2uniprot)
+ens2entrez <- as_tibble(ens2entrez)
+
+
+CM_LA_v_C <- inner_join(CM_LA_v_C, ens2symbol, by=c("row"="ENSEMBL"))
+CM_LA_v_C <- CM_LA_v_C %>% na.omit()
+CM_LA_v_C <- CM_LA_v_C[!duplicated(CM_LA_v_C$SYMBOL), ]
+
+# selecting only protein coding genes by using uniprot annotation
+CM_LA_v_C_uniprot <- inner_join(CM_LA_v_C, ens2uniprot, by=c("row"="ENSEMBL"))
+CM_LA_v_C_uniprot <- CM_LA_v_C_uniprot %>% na.omit()
+CM_LA_v_C_uniprot <- CM_LA_v_C_uniprot[!duplicated(CM_LA_v_C_uniprot$SYMBOL), ]
+
+# ENTREZ
+CM_LA_v_C_entrez <- inner_join(CM_LA_v_C, ens2entrez, by=c("row"="ENSEMBL"))
+CM_LA_v_C_entrez <- CM_LA_v_C_entrez %>% na.omit()
+CM_LA_v_C_entrez <- CM_LA_v_C_entrez[!duplicated(CM_LA_v_C_entrez$SYMBOL), ]
+# 
+# EnhancedVolcano(CM_LA_v_C,
+#                 lab = CM_LA_v_C$SYMBOL, 
+#                 x = 'log2FoldChange', 
+#                 y = 'pvalue', 
+#                 title = 'LA vs. Control (central memory)',
+#                 xlim = c(-8, 8),
+#                 gridlines.major = F,
+#                 gridlines.minor = F,
+#                 legendPosition = 'none',
+#                 legendLabSize = 10
+#   )
+```
+Central memory EA vs LA
+```{r}
+ens2symbol <- AnnotationDbi::select(org.Hs.eg.db,
+                                    key=CM_EA_v_C$row, 
+                                    columns="SYMBOL",
+                                    keytype="ENSEMBL")
+# For UNIPROT anno
+ens2uniprot <- AnnotationDbi::select(org.Hs.eg.db,
+                                    key=CM_EA_v_C$row,
+                                    columns="UNIPROT",
+                                    keytype="ENSEMBL")
+
+# For ENTREZ anno
+ens2entrez <- AnnotationDbi::select(org.Hs.eg.db,
+                                    key=CM_EA_v_C$row,
+                                    columns="ENTREZID",
+                                    keytype="ENSEMBL")
+
+ens2symbol <- as_tibble(ens2symbol)
+ens2uniprot <- as_tibble(ens2uniprot)
+ens2entrez <- as_tibble(ens2entrez)
+
+
+CM_EA_v_C <- inner_join(CM_EA_v_C, ens2symbol, by=c("row"="ENSEMBL"))
+CM_EA_v_C <- CM_EA_v_C %>% na.omit()
+CM_EA_v_C <- CM_EA_v_C[!duplicated(CM_EA_v_C$SYMBOL), ]
+
+# selecting only protein coding genes by using uniprot annotation
+CM_EA_v_LA_uniprot <- inner_join(CM_EA_v_C, ens2uniprot, by=c("row"="ENSEMBL"))
+CM_EA_v_LA_uniprot <- CM_EA_v_LA_uniprot %>% na.omit()
+CM_EA_v_LA_uniprot <- CM_EA_v_LA_uniprot[!duplicated(CM_EA_v_LA_uniprot$SYMBOL), ]
+
+# ENTREZ
+CM_EA_v_LA_entrez <- inner_join(CM_EA_v_C, ens2entrez, by=c("row"="ENSEMBL"))
+CM_EA_v_LA_entrez <- CM_EA_v_LA_entrez %>% na.omit()
+CM_EA_v_LA_entrez <- CM_EA_v_LA_entrez[!duplicated(CM_EA_v_LA_entrez$SYMBOL), ]
+# 
+# EnhancedVolcano(CM_EA_v_LA,
+#                 lab = CM_EA_v_LA$SYMBOL, 
+#                 x = 'log2FoldChange', 
+#                 y = 'pvalue', 
+#                 title = 'EA vs. LA (central memory)',
+#                 xlim = c(-8, 8)
+#   )
+```
+
+Gene set enrichment analysis with fgsea
+```{r}
+# BiocManager::install('fgsea')
+library(fgsea)
+library(tidyverse)
+library(gage)
+
+# Create a gmt file with GO:IDs and GO names
+gs <- go.gsets(species = "human", pkg.name=NULL, id.type = "eg", keep.evidence=FALSE)
+gs <- gs$go.sets[gs$go.subs$BP] # get only BP GOs
+data(egSymb)
+gs <- lapply(gs, gage::eg2sym)
+writeGMT(gs, 'GO_file.gmt')
+
+kgs <- kegg.gsets(species = "human")
+kgs <- kgs$kg.sets
+kgs <- lapply(kgs, gage::eg2sym)
+writeGMT(kgs, 'KEGG_file.gmt')
+
+# Further, all you’ll care about later on is the gene symbol and the test statistic. Get just those, and remove the NAs. Finally, if you have multiple test statistics for the same symbol, you’ll want to deal with that in some way. Here I’m just averaging them.
+data <- N_LA_v_C_uniprot
+cells <- 'NTC'
+comparison <- c('Late.Treated', 'Control')
+ranking <- data %>% 
+  dplyr::select(SYMBOL, stat) %>% 
+  na.omit() %>% 
+  distinct() %>% 
+  group_by(SYMBOL)
+
+# pathways <- gmtPathways("~/Downloads/BEA20P034_FC/DESeq/c5.go.bp.v7.2.symbols.gmt")
+pathways <- gmtPathways("~/Downloads/BEA20P034_FC/DESeq/GO_file.gmt")
+kegg <- gmtPathways("~/Downloads/BEA20P034_FC/DESeq/KEGG_file.gmt")
+ranks <- deframe(ranking)
+head(ranks, 20)
+
+############## Search GO
+# nperm = 100000 removed for multilevel
+fgseaRes <- fgsea(pathways=pathways, stats=ranks, minSize = 1, maxSize = Inf)
+
+gseaRes_LAvC <- fgseaRes %>%
+  as_tibble() %>%
+  arrange(dplyr::desc(NES))
+gseaRes_LAvC <- gseaRes_LAvC %>% separate(pathway, c('GO_id', 'pathway'), '(?<=GO:\\d{7})(\\s)') #split into GO id and pathway
+
+#####
+data <- N_EA_v_C_uniprot
+cells <- 'NTC'
+comparison <- c('Early.Treated', 'Control')
+ranking <- data %>% 
+  dplyr::select(SYMBOL, stat) %>% 
+  na.omit() %>% 
+  distinct() %>% 
+  group_by(SYMBOL)
+
+# pathways1 <- gmtPathways("~/Downloads/BEA20P034_FC/DESeq/c5.go.bp.v7.2.symbols.gmt")
+ranks <- deframe(ranking)
+head(ranks, 20)
+
+############## Search GO
+fgseaRes <- fgsea(pathways=pathways, stats=ranks, minSize = 1, maxSize = Inf)
+
+gseaRes_EAvC <- fgseaRes %>%
+  as_tibble() %>%
+  arrange(dplyr::desc(NES))
+gseaRes_EAvC <- gseaRes_EAvC %>% separate(pathway, c('GO_id', 'pathway'), '(?<=GO:\\d{7})(\\s)') #split into GO id and pathway
+
+#####
+data <- N_EA_v_LA_uniprot
+cells <- 'NTC'
+comparison <- c('Early.Treated', 'Late.Treated')
+ranking <- data %>% 
+  dplyr::select(SYMBOL, stat) %>% 
+  na.omit() %>% 
+  distinct() %>% 
+  group_by(SYMBOL)
+
+# pathways <- gmtPathways("~/Downloads/BEA20P034_FC/DESeq/c5.go.bp.v7.2.symbols.gmt")
+ranks <- deframe(ranking)
+head(ranks, 20)
+
+############## Search GO
+fgseaRes <- fgsea(pathways=pathways, stats=ranks, minSize = 1, maxSize = Inf)
+
+gseaRes_EAvLA <- fgseaRes %>%
+  as_tibble() %>%
+  arrange(dplyr::desc(NES))
+gseaRes_EAvLA <- gseaRes_EAvLA %>% separate(pathway, c('GO_id', 'pathway'), '(?<=GO:\\d{7})(\\s)') #split into GO id and pathway
+
+```
+
+
+KEGG results
+```{r}
+library(gage)
+
+kgs <- kegg.gsets(species = "human")
+kgs <- kgs$kg.sets
+kgs <- lapply(kgs, gage::eg2sym)
+writeGMT(kgs, 'KEGG_file.gmt')
+kegg <- gmtPathways("~/Downloads/BEA20P034_FC/DESeq/KEGG_file.gmt")
+
+
+
+data <- N_LA_v_C_uniprot
+cells <- 'NTC'
+comparison <- c('Late.Treated', 'Control')
+ranking <- data %>% 
+  dplyr::select(SYMBOL, stat) %>% 
+  na.omit() %>% 
+  distinct() %>% 
+  group_by(SYMBOL) %>% 
+  summarize(stat=mean(stat))
+
+kegg <- gmtPathways("~/Downloads/BEA20P034_FC/DESeq/KEGG_file.gmt")
+ranks <- deframe(ranking)
+head(ranks, 20)
+
+############## Search KEGG
+# nperm = 100000 removed for multilevel
+fgseaRes <- fgsea(pathways=kegg, stats=ranks, minSize = 1, maxSize = 1000)
+
+KEGG_gseaRes_LAvC <- fgseaRes %>%
+  as_tibble() %>%
+  arrange(desc(NES))
+KEGG_gseaRes_LAvC <- KEGG_gseaRes_LAvC %>% separate(pathway, c('KEGG_id', 'pathway'), '(?<=hsa\\d{5})(\\s)') #split into KEGG id and pathway
+
+#####
+data <- N_EA_v_C_uniprot
+cells <- 'NTC'
+comparison <- c('Early.Treated', 'Control')
+ranking <- data %>% 
+  dplyr::select(SYMBOL, stat) %>% 
+  na.omit() %>% 
+  distinct() %>% 
+  group_by(SYMBOL) %>% 
+  summarize(stat=mean(stat))
+
+# pathways1 <- gmtPathways("~/Downloads/BEA20P034_FC/DESeq/c5.go.bp.v7.2.symbols.gmt")
+ranks <- deframe(ranking)
+head(ranks, 20)
+
+############## Search KEGG
+fgseaRes <- fgsea(pathways=kegg, stats=ranks, minSize = 1, maxSize = 1000)
+
+KEGG_gseaRes_EAvC <- fgseaRes %>%
+  as_tibble() %>%
+  arrange(desc(NES))
+KEGG_gseaRes_EAvC <- KEGG_gseaRes_EAvC %>% separate(pathway, c('KEGG_id', 'pathway'), '(?<=hsa\\d{5})(\\s)') #split into KEGG id and pathway
+
+#####
+data <- N_EA_v_LA_uniprot
+cells <- 'NTC'
+comparison <- c('Early.Treated', 'Late.Treated')
+ranking <- data %>% 
+  dplyr::select(SYMBOL, stat) %>% 
+  na.omit() %>% 
+  distinct() %>% 
+  group_by(SYMBOL) %>% 
+  summarize(stat=mean(stat))
+
+# pathways <- gmtPathways("~/Downloads/BEA20P034_FC/DESeq/c5.go.bp.v7.2.symbols.gmt")
+ranks <- deframe(ranking)
+head(ranks, 20)
+
+############## Search KEGG
+fgseaRes <- fgsea(pathways=kegg, stats=ranks, minSize = 1, maxSize = 1000)
+
+KEGG_gseaRes_EAvLA <- fgseaRes %>%
+  as_tibble() %>%
+  arrange(desc(NES))
+KEGG_gseaRes_EAvLA <- KEGG_gseaRes_EAvLA %>% separate(pathway, c('KEGG_id', 'pathway'), '(?<=hsa\\d{5})(\\s)') #split into KEGG id and pathway
+```
+
+List all pathways with x number of significantly different genes
+```{r}
+sign = NULL
+cutoff <- 0.05
+for (p in gseaResTidy %>% dplyr::filter(padj<= cutoff) %>% pull(pathway)) {
+  leading_edge <- gseaResTidy %>% filter(pathway %in% p) %>% pull(leadingEdge) %>% unlist()
+  my_genes <- filter(data, SYMBOL %in% leading_edge, padj<= cutoff) %>%
+    pull(row)
+  
+    if (length(my_genes)>2) {
+      q <- data_frame(path = p, genes = length(my_genes), leadingEdge = length(leading_edge))
+      sign = rbind(sign, q)
+    }
+}
+sign <- as.data.frame(sign)
+writexl::write_xlsx(sign, '~/Downloads/BEA20P034_FC/DESeq/pathways/N/LAvC/pathways.xlsx')
+```
+
+
+Inspect heatmaps of significant pathways
+```{r}
+# library(pheatmap)
+data <- N_LA_v_C
+cells <- 'NTC'
+comparison <- c('Late.Treated', 'Control')
+
+cutoff <- 0.01
+result <- "GO_T_CELL_DIFFERENTIATION_IN_THYMUS"
+leading_edge <- unlist(unname(pathways[result])) # get all genes in the pathway
+# only real leadingEdge genes
+# leading_edge <- gseaResTidy %>% filter(pathway %in% result) %>%
+#   pull(leadingEdge) %>%
+#   unlist()
+my_genes <- data %>% filter(SYMBOL %in% leading_edge, padj<= cutoff) %>%
+  # filter(log2FoldChange < -1.3) %>%
+  pull(row) %>%
+  unique()
+
+# To compose a heatmap containing all 3 grups we need DE genes from all 3 comparisons
+# my_genes_1 <- N_EA_v_C %>% filter(SYMBOL %in% leading_edge, padj<= cutoff) %>%
+#   # filter(log2FoldChange < -1.3) %>%
+#   pull(row) %>%
+#   unique()
+# my_genes_2 <- N_EA_v_LA %>% filter(SYMBOL %in% leading_edge, padj<= cutoff) %>%
+#   # filter(log2FoldChange < -1.3) %>%
+#   pull(row) %>%
+#   unique()
+# my_genes <- unique(c(my_genes, my_genes_1, my_genes_2))
+
+my_genes_anno <- data %>% filter(SYMBOL %in% leading_edge, padj<= cutoff) %>%
+  # slice_head(n=10) %>%
+  dplyr::select(row, SYMBOL)
+# remove duplicated rows
+my_genes_anno <- my_genes_anno[!duplicated(my_genes_anno$row), ]
+my_genes_anno <- my_genes_anno %>% as_tibble %>% column_to_rownames(var = 'row')
+
+vsd <- vst(dds)
+ids <- metaData %>% filter(cellType %in% cells, condition %in% comparison)
+# ids <- metaData %>% filter(cellType %in% cells) # this includes EA, LA and C in the heatmap
+mat <- assay(vsd)[my_genes, rownames(ids)]
+mat <- mat - rowMeans(mat)
+dim(mat)
+
+anno <- metaData %>% filter(cellType %in% cells) %>% dplyr::select(condition)
+outdir <- '~/Downloads/BEA20P034_FC/heatmaps/'
+fsize <- function(x=length(my_genes)){
+  n <- sqrt(x^-2)*300
+  if (n>10) {
+    n=10
+  }
+  return(n)
+  }
+pheatmap(mat,
+         # scale = 'column',
+         annotation_col = anno,
+         clustering_method = "ward.D",
+         labels_row = my_genes_anno$SYMBOL,
+         fontsize_row = fsize(),
+         # cellwidth = 9,
+         cellheight = fsize(),
+         main = paste0(result,', p<',cutoff),
+         border_color = NA
+         # filename = paste0(outdir, result,'_', paste(comparison, collapse = '_'),'.pdf')
+         )
+
+```
+
+
+
+*CEMiTool analysis*
+Load normalized data
+```{r}
+countData <- as.matrix(read.csv('cemi_data_no_104_norm.csv', sep = ';', row.names = 'gene_id'))
+# countData <- countData[, -3] #exclude EA outlier
+head(countData)
+
+metaData <- read.csv('coldata_no_104cm.csv', sep = ';', row.names = 1)
+# metaData <- metaData[-3,] #exclude EA outlier
+head(metaData)
+metaData <- metaData[,c("cellType","condition")]
+metaData$condition <- factor(metaData$condition)
+metaData$cellType <- factor(metaData$cellType)
+metaData
+colnames(countData) <- sub("X", "", colnames(countData))
+all(rownames(metaData) == colnames(countData))
+```
+
+#CEMiTool
+```{r}
+
+library(singleCellTK)
+library(CEMiTool)
+counts.symb <- singleCellTK::convertGeneIDs(inSCE = countData,
+                                           inSymbol = "ENSEMBL",
+                                           outSymbol = "SYMBOL",
+                                           database = "org.Hs.eg.db")
+cd <- data.frame(countData) 
+cd <- cd %>% rownames_to_column(var = 'row')
+names(cd) <- sub('X', '', names(cd))
+
+# Generate symbols from ENSMBL IDs 
+ens2symbol <- AnnotationDbi::select(org.Hs.eg.db,
+                                    key=CM_EA_v_LA$row, 
+                                    columns="SYMBOL",
+                                    keytype="ENSEMBL")  
+ens2symbol <- as_tibble(ens2symbol)
+ens2symbol <- ens2symbol[!duplicated(ens2symbol$ENSEMBL), ]
+cemi.data <- cbind(cd, ens2symbol)
+cemi.data <- cemi.data %>% as_tibble() %>% dplyr::select(-row, -ENSEMBL)
+
+# df including new genes and trasnscripts
+counts.symb %>% as.data.frame()
+df<- df %>% dplyr::select(grep('N', names(df)))
+
+# df without LOCs and LINs
+df <- counts.symb %>% as.data.frame()
+df <- df %>% dplyr::select(grep('N', names(df))) %>% rownames_to_column() %>% dplyr::filter(!grepl('^LOC|^LIN', rowname)) %>% column_to_rownames()
+
+# EA = 12 is with 1 outlier removed. Should be 13 with all samples
+ann <- data.frame(SampleName = names(df), Class = c(rep('Early.Treated', 13), rep('Late.Treated', 11), rep('Control', 15)))
+
+# Run CEMi analysis
+cem <- cemitool(df, ann, plot_diagnostics = F, verbose = T, apply_vst = T, force_beta = T)
+
+
+# https://www.bioconductor.org/packages/release/bioc/vignettes/CEMiTool/inst/doc/CEMiTool.html
+# generate heatmap of gene set enrichment analysis
+cem <- mod_gsea(cem)
+cem <- plot_gsea(cem)
+show_plot(cem, "gsea")
+
+# plot gene expression within each module
+cem <- plot_profile(cem)
+plots_prof <- show_plot(cem, "profile")
+plots_prof[6]
+
+# read GMT file
+# gmt_fname <- system.file("extdata", "pathways.gmt", package = "CEMiTool")
+# gmt_in <- read_gmt(gmt_fname)
+gmt_in2 <- read_gmt("~/Downloads/BEA20P034_FC/DESeq/GO.all.v7.1.symbols.gmt")
+gmt_in3 <- read_gmt("~/Downloads/BEA20P034_FC/DESeq/kegg.v7.1.symbols.gmt")
+gmt_in4 <- read_gmt("~/Downloads/BEA20P034_FC/DESeq/immunologic.all.v7.1.symbols.gmt")
+gmt_in5 <- read_gmt("~/Downloads/BEA20P034_FC/DESeq/msigdb.v7.1.symbols.gmt")
+gmt_in6 <- read_gmt("~/Downloads/BEA20P034_FC/DESeq/c2.cp.v7.2.symbols.gmt")
+gmt_in7 <- read_gmt("~/Downloads/BEA20P034_FC/DESeq/c5.hpo.v7.2.symbols.gmt")
+gmt <- read_gmt("~/Downloads/BEA20P034_FC/DESeq/GO_file.gmt")
+
+# perform over representation analysis
+cem <- mod_ora(cem, gmt_in2)
+
+# plot ora results
+cem <- plot_ora(cem)
+plots_ora <- show_plot(cem, "ora")
+plots_ora
+
+# read interactions
+# int_fname <- system.file("extdata", "interactions.tsv", package = "CEMiTool")
+# int_df <- read.delim(int_fname)
+# Retrieve all protein IDs and generatea dictionary with correspondng gene symbols
+library(EnsDb.Hsapiens.v75)
+edb <- EnsDb.Hsapiens.v75
+p <- keys(edb, keytype="PROTEINID")
+dict <- select(edb, keys=p, columns=c("SYMBOL"), keytype="PROTEINID")
+
+# Replace protein ids with gene symbols (keeps order). db1 being the data.frame
+level_vec <- dict$PROTEINID
+replacement_vec <- dict$SYMBOL
+db <- read.csv('interactions.csv')
+db <- db[,-3]
+db[] <- lapply(db, function(x) forcats::lvls_revalue(factor(x, levels = level_vec), 
+                                                       replacement_vec))
+db <- db %>% na.omit()
+names(db) <- c('gene1symbol', 'gene2symbol')
+int_df <- db
+head(int_df)
+
+# plot interactions
+library(ggplot2)
+interactions_data(cem) <- int_df # add interactions
+cem <- plot_interactions(cem) # generate plot
+plots_int <- show_plot(cem, "interaction") # view the plot for the first module
+plots_int[4]
+```
+
+Report
+```{r}
+# create report as html document
+generate_report(cem, directory="./Report", force = T)
+
+# write analysis results into files
+write_files(cem, directory="./Tables")
+
+# save all plots
+save_plots(cem, "all", directory="./Plots-cem", force = T)
+```
+
+Plot counts (gene expression)
+```{r}
+library(ggpubr)
+gene <- c("ENSG00000073756", "ENSG00000171791", "ENSG00000160791", "ENSG00000126353", "ENSG00000139193", "ENSG00000178562", "ENSG00000112964", 
+          "ENSG00000168685", "ENSG00000227507", "ENSG00000148773", "ENSG00000188389", "ENSG00000261371", "ENSG00000188404", "ENSG00000126561", "ENSG00000173757", 
+          "ENSG00000117281", "ENSG00000163599", "ENSG00000181847", "ENSG00000135077", "ENSG00000186803", 
+          "ENSG00000137757", "ENSG00000234829", "ENSG00000197919", "ENSG00000228083", "ENSG00000188379",
+          "ENSG00000233816")
+gene_symb <- mapIds(org.Hs.eg.db,
+                        keys = gene, 
+                        keytype ="ENSEMBL",
+                        column = "SYMBOL")
+gene_symb <- gene_symb[!gene_symb %in% c('CD28', 'PECAM1', 'STAT5A', 'CTLA4', 'HAVCR2', 'TIGIT')]
+
+gene <- sort(unname(gene_symb))
+gene <- mapIds(org.Hs.eg.db,
+                        keys = gene, 
+                        keytype ="SYMBOL",
+                        column = "ENSEMBL")
+gene <- unname(gene)
+
+d_full = data_frame()
+for (i in gene) {
+  d = plotCounts(dds, gene= i, intgroup=c("condition", "cellType"), returnData = T) %>% dplyr::mutate(gene = i)
+  d_full = rbind(d, d_full)
+}
+
+require(scales)
+
+ # d <- plotCounts(dds, gene=gene, intgroup=c("condition", "cellType"), returnData = T) %>% dplyr::mutate(gene = gene)
+d_full %>% dplyr::filter(cellType %in% 'NTC') %>% dplyr::mutate(symbol =  AnnotationDbi::mapIds(org.Hs.eg.db,
+                                keys = gene, 
+                                keytype ="ENSEMBL",
+                                column = "SYMBOL")) %>% 
+ggplot(aes(x = factor(condition, levels = c('Early.Treated', 'Late.Treated', 'Control')), y = count, fill = factor(condition, levels = c('Early.Treated', 'Late.Treated', 'Control')))) +
+  geom_boxplot() +
+  scale_y_continuous(trans='log10', labels=trans_format('log10',math_format(10^.x))) +
+  xlab('') +
+  theme_ipsum() +
+  facet_wrap(~symbol) +
+  expand_limits(y = c(0, 100000)) +
+  ggthemes::scale_fill_tableau(name=NULL) +
+  theme(
+    legend.position = 'none',
+    axis.text.x = element_text(angle = 45, hjust = 1)
+  ) +
+  geom_signif(comparisons = list(c("Control", "Early.Treated"),
+                                 c("Control", "Late.Treated"),
+                                 c("Early.Treated", "Late.Treated")), 
+              map_signif_level=TRUE, step_increase = 0.1, textsize=2, size = 0.3)
+
+ggsave(plot = last_plot(), filename = 'all_genes2.pdf',
+       device = 'pdf', width = 6, height = 7, scale = 1.5)
+
+```
+
+Venn diagram
+```{r}
+eavc <- N_EA_v_C_uniprot %>% dplyr::filter(padj<=0.01, abs(log2FoldChange) > 1.5) %>% na.omit() %>% pull(SYMBOL) 
+lavc <- N_LA_v_C_uniprot %>% dplyr::filter(padj<=0.01, abs(log2FoldChange) > 1.5) %>% na.omit() %>%  pull(SYMBOL)
+eavla <- N_EA_v_LA_uniprot%>% dplyr::filter(padj<=0.01, abs(log2FoldChange) > 1.5) %>% na.omit() %>%  pull(SYMBOL) 
+
+# install.packages('VennDiagram')
+library(VennDiagram)
+
+venn <- venn.diagram(
+  x = list(eavc, lavc, eavla),
+  category.names = c('EA vs. Control', 'LA vs. Control', 'EA vs. LA'),
+  filename = 'venn1.png',
+  output = T,
+  imagetype="png" ,
+  height = 600 , 
+  width = 600 , 
+  resolution = 400,
+  compression = "lzw",
+  lwd = 0.5,
+  col=c("#b1e9a3", '#ffd57e', '#f688bb'),
+  fill = c(alpha("#b1e9a3",0.5), alpha('#ffd57e',0.5), alpha('#f688bb',0.5)),
+  cex = 0.5,
+  fontfamily = "sans",
+  cat.cex = 0.3,
+  cat.default.pos = "outer",
+  cat.pos = c(-27, 27, 135),
+  cat.dist = c(0.08, 0.08, 0.08),
+  cat.fontfamily = "sans",
+  cat.col = c("#b1e9a3", '#ffd57e', '#f688bb'),
+  rotation = 1
+)
+
+################ Genes that are COMMON or UNIQUE in comparisons ################
+overlap_all <- intersect(intersect(eavc,lavc),eavla)
+overlap_EAvC_LAvC <- intersect(eavc, lavc)
+overlap_EAvC_EAcLA <- intersect(eavc, eavla)
+overlap_LAvC_EAcLA <- intersect(lavc, eavla)
+
+unique_EAvC <- setdiff(eavc, c(lavc, eavla))
+unique_LAvC <- setdiff(lavc, c(eavc, eavla))
+unique_EAvLA <- setdiff(eavla, c(eavc, lavc))
+
+list <- list(eavc, lavc, eavla)
+```
+
+Venn diagram with eulerr
+```{r}
+install.packages('eulerr')
+library(eulerr)
+
+# genes <- c(A = 897, B = 7232, C = 286,
+#            'A&B' = 3471, 'A&C' = 181, 'A&B&C' = 10,
+#            'B&C' = 899 )
+
+genes <- c(A = length(unique_EAvC), B = length(unique_LAvC), C = length(unique_EAvLA),
+           'A&B' = length(overlap_EAvC_LAvC), 
+           'A&C' = length(overlap_EAvC_EAcLA),
+           'A&B&C' = length(overlap_all),
+           'B&C' = length(overlap_LAvC_EAcLA))
+fit <- euler(genes)
+plot(fit, quantities = T,
+     fills = c('#87BCDE', '#FF7E6B', '#F4D35E'),
+     # legend = list(labels = c('aaa', 'bbbb', 'ccc')),
+     labels = list(labels = c('EA vs. Control', 'LA vs. Control', 'EA vs. LA')
+                   ))
+```
+
+

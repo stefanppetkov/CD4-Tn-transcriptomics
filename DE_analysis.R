@@ -13,7 +13,6 @@ library(extrafont)
 library('Homo.sapiens')
 library(RColorBrewer)
 
-
 ### Load raw counts data/metadata and clean
 
 countData <- as.matrix(read.csv('degData_naive.csv', sep = ';', row.names = 'gene_id'))

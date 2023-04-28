@@ -11,8 +11,7 @@ library(RColorBrewer)
 ### Heatmap of apoptosis-related genes
 
 ## helpter functions
-# Cluster purity function
-# To compute purity , each cluster is assigned to the class which is most frequent in the cluster, and then the accuracy of this assignment is measured by counting the number of correctly assigned cases and dividing by number of total cases.
+# Cluster purity function to compute purity , each cluster is assigned to the class which is most frequent in the cluster, and then the accuracy of this assignment is measured by counting the number of correctly assigned cases and dividing by number of total cases.
 
 cluster.purity <- function(clusters, classes) {
 

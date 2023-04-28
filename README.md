@@ -33,4 +33,8 @@ B. Dot-plot visualization of the GO analysis of genes within the 4 clusters. The
 We performed random forest feature selection implemented by the Boruta R package to single out essential genes controlling the processes of apoptosis, inflammation and immune response during early and late treated HIV-1 infection. The DEGs between groups are shown in heat-maps and the functions of the proteins coded by DEGs according to Uniprot.
 
 ## Weighted network correlation analysis
-In order to find possible DEGs potentially involved in pathological processes in each group of patients we analyzed co-regulation and co-expression of the gene-sets specific for the comparisons EA vs C, LA vs C and EA v LA patients. This method identified hub genes, which we defined as genes whose expression significantly correlated (r > 0.5) with at least 2 additional genes. To gain insight into the function of these gene hubs we performed enrichment analyses using the co-expressed genes. 
+In order to find possible DEGs potentially involved in pathological processes in each group of patients we analyzed co-regulation and co-expression of the gene-sets specific for the comparisons EA vs C, LA vs C and EA v LA patients. This method identified hub genes, which we defined as genes whose expression significantly correlated (r > 0.5) with at least 2 additional genes. To gain insight into the function of these gene hubs we performed enrichment analyses using the co-expressed genes.
+
+## Full article
+
+Petkov S, Chiodi F. Distinct transcriptomic profiles of naïve CD4+ T cells distinguish HIV-1 infected patients initiating antiretroviral therapy at acute or chronic phase of infection. Genomics. 2021 Nov;113(6):3487-3500. doi: 10.1016/j.ygeno.2021.08.014. Epub 2021 Aug 20. PMID: 34425224.

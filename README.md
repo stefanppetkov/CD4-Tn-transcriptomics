@@ -14,11 +14,23 @@ C. Violin plot showing the median overall difference in gene expression (absolut
 ## Clustering and ontology of differntially expressed genes
 ![Clustering](https://ars.els-cdn.com/content/image/1-s2.0-S0888754321003219-gr2.jpg "a title")
 
+Heatmap and pie chart visualizing 1134 highly significant (adj.p < 0.01, log2FC > 1.5) DEGs in HIV-1-infected patients compared to controls.
+
+A. The dendrogram labels denote the 4 different clusters defined by hierarchical clustering. Colored lanes to the left indicate the functional annotation of genes involved in apoptosis, inflammation and immune response (n = 211).
+
+B. Significantly enriched GO terms in the list of DEGs not involved in apoptosis, inflammation and immune response. The list of 923 genes was analyzed for GO term enrichment. Similarity between significantly enriched terms (p < 0.01) was calculated using rrvigo and visualized as a pie chart. The percentage indicates the slice's proportion of the whole pie. The number of genes associated with each GO term is shown in parentheses.
 
 ## Functional characterization of DEGs within clusters
-![Alt text](https://ars.els-cdn.com/content/image/1-s2.0-S0888754321003219-gr3.jpg "a title")
+![functional analysis](https://ars.els-cdn.com/content/image/1-s2.0-S0888754321003219-gr3.jpg "a title")
+
+Expression levels and functional characterization of DEGs within the clusters associated with apoptosis, inflammation and immune response.
+
+A. Violin plots representing the overall gene expression in each of the 4 defined clusters containing annotated genes.
+
+B. Dot-plot visualization of the GO analysis of genes within the 4 clusters. The size of the dot corresponds to the genes associated with the respective GO term divided by the total number of genes in the cluster (gene ratio) and the color represents the significance level.
 
 ## Heatmap visualization and random forest feature selection
-
+We performed random forest feature selection implemented by the Boruta R package to single out essential genes controlling the processes of apoptosis, inflammation and immune response during early and late treated HIV-1 infection. The DEGs between groups are shown in heat-maps and the functions of the proteins coded by DEGs according to Uniprot.
 
 ## Weighted network correlation analysis
+In order to find possible DEGs potentially involved in pathological processes in each group of patients we analyzed co-regulation and co-expression of the gene-sets specific for the comparisons EA vs C, LA vs C and EA v LA patients. This method identified hub genes, which we defined as genes whose expression significantly correlated (r > 0.5) with at least 2 additional genes. To gain insight into the function of these gene hubs we performed enrichment analyses using the co-expressed genes. 

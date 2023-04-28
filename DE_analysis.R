@@ -258,3 +258,57 @@ N_LA_v_C_uniprot %>%
     up_blue = sum(log2FoldChange < FCcutoff & log2FoldChange > 0 & padj <= pCutoff),
     up_grey = sum(log2FoldChange < FCcutoff & log2FoldChange > 0 & padj >= pCutoff)
   )
+
+
+### Euler diagram
+
+eavc <- N_EA_v_C_uniprot %>% dplyr::filter(padj<=0.01, abs(log2FoldChange) > 1.5) %>% na.omit() %>% pull(SYMBOL) 
+lavc <- N_LA_v_C_uniprot %>% dplyr::filter(padj<=0.01, abs(log2FoldChange) > 1.5) %>% na.omit() %>%  pull(SYMBOL)
+eavla <- N_EA_v_LA_uniprot%>% dplyr::filter(padj<=0.01, abs(log2FoldChange) > 1.5) %>% na.omit() %>%  pull(SYMBOL) 
+
+################################################################################
+################ Genes that are COMMON or UNIQUE in comparisons ################
+################################################################################
+overlap_all <- intersect(intersect(eavc,lavc),eavla)
+overlap_EAvC_LAvC <- intersect(eavc, lavc)
+overlap_EAvC_EAcLA <- intersect(eavc, eavla)
+overlap_LAvC_EAcLA <- intersect(lavc, eavla)
+
+unique_EAvC <- setdiff(eavc, c(lavc, eavla))
+unique_LAvC <- setdiff(lavc, c(eavc, eavla))
+unique_EAvLA <- setdiff(eavla, c(eavc, lavc))
+
+genes <- c(A = length(unique_EAvC), B = length(unique_LAvC), C = length(unique_EAvLA),
+           'A&B' = length(overlap_EAvC_LAvC), 
+           'A&C' = length(overlap_EAvC_EAcLA),
+           'A&B&C' = length(overlap_all),
+           'B&C' = length(overlap_LAvC_EAcLA))
+fit <- euler(genes)
+plot(fit, quantities = T,
+     fills = c('#87BCDE', '#FF7E6B', '#F4D35E'),
+     labels = list(labels = c('EA vs. Control', 'LA vs. Control', 'EA vs. LA')
+                   ))
+
+
+### Violin plot showing median fold-change difference of EA and LA relative to controls
+
+N_EA_v_C_uniprot[['group']] <- 'EA'
+N_LA_v_C_uniprot[['group']] <- 'LA'
+
+N_EA_plus_LA <- rbind(N_EA_v_C_uniprot, N_LA_v_C_uniprot)
+
+N_EA_plus_LA %>% 
+  ggplot(aes(x=group, y = abs(log2FoldChange), fill = group)) +
+  geom_violin(trim=FALSE, adjust = 1.5)+
+  geom_boxplot(width=0.1, fill="white",
+               outlier.shape = NA
+               ) +
+  xlab('') +
+  ylab('Absolute log2FC') +
+  # coord_flip() +
+  ggthemes::scale_color_tableau(name=NULL) +
+  ggthemes::scale_fill_tableau(name=NULL) +
+  theme_ipsum() +  
+  theme(
+    legend.position = 'none'
+  )
